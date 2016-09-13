@@ -3,7 +3,6 @@ import bmesh
 import mathutils
 from mathutils.bvhtree import BVHTree
 
-
 ARMATURE_NAME = "Armature"
 CAST_LENGTH = .01
 
@@ -106,20 +105,26 @@ def rig(armature, last_bone, entry_polygons, last_object, target_object):
             rig(armature, bone, pair[1], target_object, pair[0])
 
     weight_object(target_object, armature)
+    return bone
 
 
-def start_rig_at(target_object):
+def start_rig_at(target_object, to2):
+   
+    
     bpy.ops.object.add(type='ARMATURE', enter_editmode=True, location=target_object.location)
     armature = bpy.context.object
     armature.show_x_ray = True
     armature.name = ARMATURE_NAME
 
     bpy.ops.object.mode_set(mode='EDIT')
-
-    bone = armature.data.edit_bones.new(target_object.name)
+    
+    base = armature.data.edit_bones.new("BASE")
+    bone = armature.data.edit_bones.new(target_object.name)    
+     
+    bone.parent = base
     bone.tail = center_of_mesh(target_object)
     touching = get_touching_objects(target_object)
-
+   
     target_object.parent = armature
 
     vertex_sum = mathutils.Vector((0, 0, 0))
@@ -128,14 +133,14 @@ def start_rig_at(target_object):
     # TODO : Refactor this little monstrosity ...
     for pair in touching:
         if pair[0] != target_object:
-            rig(armature, bone, pair[1], target_object, pair[0])
+            bone2 = rig(armature, bone, pair[1], target_object, pair[0])
+            if pair[0] == to2:
+                bone2.parent=base
+                bone.head = center_of_polygons(pair[0],pair[1])    
 
-            vertex = center_of_polygons(pair[0], pair[1])
-            vertex_sum += vertex
-            total_polygons_touching += len(pair[1])
-    center = vertex_sum / total_polygons_touching
-
-    bone.head = center
+  
 
     weight_object(target_object, armature)
 
+
+start_rig_at(bpy.data.objects["Hips"], bpy.data.objects["Chest"])
